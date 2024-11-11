@@ -1,10 +1,19 @@
 FROM postgres:16
 
-# Install OpenSSL and sudo
-RUN apt-get update && apt-get install -y openssl sudo
+# Install OpenSSL, sudo, and build dependencies
+RUN apt-get update && apt-get install -y openssl sudo lsb-release wget git build-essential postgresql-server-dev-16
 
 # Allow the postgres user to execute certain commands as root without a password
 RUN echo "postgres ALL=(root) NOPASSWD: /usr/bin/mkdir, /bin/chown, /usr/bin/openssl" > /etc/sudoers.d/postgres
+
+# Add TimescaleDB
+RUN sh -c 'echo "deb https://packagecloud.io/timescale/timescaledb/debian/ $(lsb_release -c -s) main" > /etc/apt/sources.list.d/timescaledb.list'
+RUN wget --quiet -O - https://packagecloud.io/timescale/timescaledb/gpgkey | apt-key add -
+RUN apt-get update && apt-get install -y timescaledb-postgresql-16
+
+# Add pgvector
+RUN git clone https://github.com/pgvector/pgvector.git
+RUN cd pgvector && make && make install
 
 # Add init scripts while setting permissions
 COPY --chmod=755 init-ssl.sh /docker-entrypoint-initdb.d/init-ssl.sh
